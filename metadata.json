@@ -1,0 +1,6 @@
+{
+  "name": "AMMUVERSE - A Digital Universe for Ammu",
+  "description": "An enchanted, zero-scrolling digital universe created exclusively for Gagana (Ammu) with her custom birthday song, interactive constellations, wishing well, secret letter, and birthday sky.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
