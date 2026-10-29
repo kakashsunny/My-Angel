@@ -13,6 +13,7 @@ import {
   Compass,
   Bookmark,
   Check,
+  Mail,
 } from "lucide-react";
 import { AMMUVERSE_CONFIG } from "../config/ammuverseConfig";
 import { playMagicalChime, playStarSparkle } from "../utils/soundEffects";
@@ -35,6 +36,7 @@ interface AmmuUniverseProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onOpenFinale: () => void;
+  onResetToEnvelope?: () => void;
   collectedKeepsakes: Set<"crown" | "star" | "heart">;
   isChorusActive?: boolean;
 }
@@ -44,6 +46,7 @@ export const AmmuUniverse: React.FC<AmmuUniverseProps> = ({
   isMuted,
   onToggleMute,
   onOpenFinale,
+  onResetToEnvelope,
   collectedKeepsakes,
   isChorusActive = false,
 }) => {
@@ -223,6 +226,18 @@ export const AmmuUniverse: React.FC<AmmuUniverseProps> = ({
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </button>
+
+          {/* Re-open Envelope Opening */}
+          {onResetToEnvelope && (
+            <button
+              onClick={onResetToEnvelope}
+              title="Re-open Magical Envelope"
+              aria-label="Re-open Magical Envelope"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-pink-200/80 bg-white/70 text-rose-800 hover:bg-pink-100/80 transition-colors shadow-xs shrink-0"
+            >
+              <Mail className="h-3.5 w-3.5 text-rose-800" />
+            </button>
+          )}
 
           {/* Sparkle Finale Pill */}
           <button

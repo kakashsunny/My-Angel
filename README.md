@@ -13,6 +13,15 @@ AMMUVERSE 2.0 elevates the enchanted, zero-scrolling digital universe created fo
 
 ## ✨ 2.0 Upgrades Implemented
 
+### 0. Cinematic Intro — Google Flow 5-Second Opening
+- Full-screen opening scene featuring the 5-second Google Flow stardust heart animation (`public/assets/ammuverse-intro.mp4`).
+- Centered composition across desktop and mobile with `100dvh` and `100vw` (`object-cover`).
+- Silent video playback accompanied synchronously by Ammu's custom birthday MP3 via the existing audio engine.
+- Interactive start screen with the accessible prompt: **“ENTER YOUR LITTLE UNIVERSE ♡”**.
+- 500ms smooth crossfade transition into the wax-sealed interactive envelope upon completion.
+- Skip Intro control available at any moment; video failure gracefully falls back to the celestial starry canvas.
+- Shown strictly once per fresh visit (persisted via `sessionStorage`), preserving zero-scroll and keyboard accessibility.
+
 ### 1. Upgrade 1 — The Princess Chooses Her Magic
 - Following the wax-sealed envelope opening, Ammu is greeted with:
   *"Welcome to your little universe, Ammu. What kind of magic should we discover first?"*

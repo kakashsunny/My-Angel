@@ -7,11 +7,15 @@ import confetti from "canvas-confetti";
 interface EnvelopeIntroProps {
   onOpenUniverse: () => void;
   isMuted: boolean;
+  onStartAudio?: () => void;
+  onReplayIntro?: () => void;
 }
 
 export const EnvelopeIntro: React.FC<EnvelopeIntroProps> = ({
   onOpenUniverse,
   isMuted,
+  onStartAudio,
+  onReplayIntro,
 }) => {
   const [isOpening, setIsOpening] = useState(false);
   const cfg = AMMUVERSE_CONFIG.envelopeIntro;
@@ -19,6 +23,8 @@ export const EnvelopeIntro: React.FC<EnvelopeIntroProps> = ({
   const handleOpen = () => {
     if (isOpening) return;
     setIsOpening(true);
+    // Trigger audio synchronously on user gesture so modern browsers never block autoplay
+    onStartAudio?.();
     playMagicalChime(1, isMuted);
 
     // Delightful golden & pink confetti burst
@@ -155,11 +161,23 @@ export const EnvelopeIntro: React.FC<EnvelopeIntroProps> = ({
         </button>
 
         <button
-          onClick={onOpenUniverse}
+          onClick={() => {
+            onStartAudio?.();
+            onOpenUniverse();
+          }}
           className="text-xs text-pink-700/70 hover:text-pink-900 transition-colors underline underline-offset-4"
         >
           {cfg.skipButtonText}
         </button>
+
+        {onReplayIntro && (
+          <button
+            onClick={onReplayIntro}
+            className="text-[11px] text-pink-600/70 hover:text-pink-950 transition-colors mt-0.5 underline underline-offset-2"
+          >
+            ↺ Watch Intro Video Again
+          </button>
+        )}
       </div>
     </div>
   );

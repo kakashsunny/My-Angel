@@ -31,6 +31,7 @@ export const MusicDock: React.FC<MusicDockProps> = ({
   onChorusActiveChange,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isChorusActiveRef = useRef<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
@@ -56,6 +57,7 @@ export const MusicDock: React.FC<MusicDockProps> = ({
     };
   }, [isMobileVolumeOpen]);
 
+  // Audio element event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -64,6 +66,16 @@ export const MusicDock: React.FC<MusicDockProps> = ({
       setDuration(audio.duration || 0);
       setIsAudioAvailable(true);
     };
+
+    const handleCanPlay = () => {
+      setIsAudioAvailable(true);
+      if (audio.duration && !duration) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
 
     const handleTimeUpdate = () => {
       const cur = audio.currentTime || 0;
@@ -74,7 +86,8 @@ export const MusicDock: React.FC<MusicDockProps> = ({
         (c) => cur >= c.start && cur <= c.end
       );
 
-      if (inChorus !== isChorusActive) {
+      if (inChorus !== isChorusActiveRef.current) {
+        isChorusActiveRef.current = inChorus;
         setIsChorusActive(inChorus);
         onChorusActiveChange?.(inChorus);
       }
@@ -92,34 +105,63 @@ export const MusicDock: React.FC<MusicDockProps> = ({
     };
 
     const handleError = () => {
-      setIsAudioAvailable(false);
+      // Do not permanently lock out the user from attempting playback
       setIsPlaying(false);
     };
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-  }, [songUrl, isChorusActive, onChorusActiveChange]);
+  }, [songUrl, onChorusActiveChange, duration]);
 
-  // Autoplay trigger after envelope opened by explicit user interaction
+  // Autoplay trigger after envelope opened by explicit user interaction + gesture recovery
   useEffect(() => {
-    if (autoPlayTrigger && audioRef.current && isAudioAvailable) {
-      audioRef.current
-        .play()
+    if (!autoPlayTrigger) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Direct playback attempt
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
         .then(() => setIsPlaying(true))
         .catch(() => {
           setIsPlaying(false);
         });
     }
-  }, [autoPlayTrigger, isAudioAvailable]);
+
+    // Modern browser gesture unlocker: if blocked, plays on the very next tap anywhere on the screen
+    const unlockOnGesture = () => {
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener("pointerdown", unlockOnGesture, { once: true });
+    window.addEventListener("keydown", unlockOnGesture, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockOnGesture);
+      window.removeEventListener("keydown", unlockOnGesture);
+    };
+  }, [autoPlayTrigger]);
 
   // Mute sync
   useEffect(() => {
@@ -136,15 +178,31 @@ export const MusicDock: React.FC<MusicDockProps> = ({
   }, [volume]);
 
   const togglePlay = () => {
-    if (!audioRef.current || !isAudioAvailable) return;
-    if (isPlaying) {
-      audioRef.current.pause();
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!audio.paused) {
+      audio.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current
-        .play()
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
+      }
+    }
+  };
+
+  const handleReplaySong = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
         .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
+        .catch(() => {});
     }
   };
 
@@ -189,7 +247,7 @@ export const MusicDock: React.FC<MusicDockProps> = ({
       aria-label="Ammuverse audio and experience navigation controls"
       className="safe-pb relative z-20 flex w-full max-w-4xl items-center justify-between gap-1 sm:gap-2 px-2 py-1 sm:px-4 sm:py-2 text-[#4a2835]"
     >
-      <audio ref={audioRef} src={songUrl} preload="metadata" loop />
+      <audio ref={audioRef} src={songUrl} preload="auto" loop playsInline />
 
       {/* Dock Container */}
       <div
@@ -220,11 +278,10 @@ export const MusicDock: React.FC<MusicDockProps> = ({
           </button>
 
           {/* Song info, visualizer and chorus badge */}
-          <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden">
+          <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden pr-1.5">
             <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-              <span className="truncate text-xs sm:text-sm font-semibold tracking-wide text-rose-900">
-                <span className="xs:hidden">Princess Birthday</span>
-                <span className="hidden xs:inline sm:hidden">Happy Birthday Ammu</span>
+              <span className="truncate text-xs sm:text-sm font-semibold tracking-wide text-rose-900 whitespace-nowrap">
+                <span className="sm:hidden">Happy Birthday Ammu</span>
                 <span className="hidden sm:inline">Happy Birthday, Princess</span>
               </span>
 
@@ -246,14 +303,14 @@ export const MusicDock: React.FC<MusicDockProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-pink-700/80 min-w-0">
-              <span className="hidden sm:inline truncate">{isAudioAvailable ? "Original Song for Ammu • " : "Soundtrack • "}</span>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-pink-700/80 min-w-0 whitespace-nowrap">
+              <span className="hidden md:inline truncate">{isAudioAvailable ? "Original Song for Ammu • " : "Soundtrack • "}</span>
               {isPlaying && duration > 0 ? (
-                <span className="tabular-nums font-mono font-medium text-rose-900/80 shrink-0">
+                <span className="tabular-nums font-mono font-medium text-rose-900/80 shrink-0 whitespace-nowrap">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               ) : (
-                <span className="tabular-nums font-mono text-[9px] sm:text-[10px] text-rose-800/80 font-medium">
+                <span className="tabular-nums font-mono text-[9px] sm:text-[10px] text-rose-800/80 font-medium whitespace-nowrap">
                   Optional Song (Tap ▶)
                 </span>
               )}
@@ -281,9 +338,9 @@ export const MusicDock: React.FC<MusicDockProps> = ({
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* SLEEK MINIMALIST VOLUME CONTROL */}
           <div className="mobile-volume-container relative flex items-center sm:rounded-full sm:bg-white/70 sm:border sm:border-pink-200/90 sm:px-2 sm:py-1 sm:shadow-xs transition-all">
-            {/* Mobile Floating Volume Popover: Floats neatly above the speaker button with down-arrow pointer */}
+            {/* Mobile Floating Volume Popover: Floats neatly above right controls with down-arrow pointer */}
             {isMobileVolumeOpen && (
-              <div className="sm:hidden absolute bottom-full -right-1 mb-2.5 z-50 flex items-center gap-2 rounded-full bg-white/95 border-2 border-pink-300 px-3 py-1.5 shadow-2xl backdrop-blur-md animate-fadeIn whitespace-nowrap">
+              <div className="sm:hidden absolute bottom-[calc(100%+10px)] right-0 z-50 flex items-center gap-2 rounded-full bg-white/98 border border-pink-300 px-3 py-1.5 shadow-2xl backdrop-blur-md animate-fadeIn whitespace-nowrap">
                 <button
                   type="button"
                   onClick={onToggleMute}
@@ -310,8 +367,8 @@ export const MusicDock: React.FC<MusicDockProps> = ({
                 <span className="tabular-nums text-[10px] font-mono font-bold text-rose-950 w-7 text-right">
                   {isMuted ? "0%" : `${Math.round(volume * 100)}%`}
                 </span>
-                {/* Pointer tip pointing down to volume button */}
-                <span className="absolute -bottom-1 right-3.5 h-2 w-2 rotate-45 border-r-2 border-b-2 border-pink-300 bg-white" />
+                {/* Pointer tip pointing down to right control area */}
+                <span className="absolute -bottom-1.5 right-6 h-2.5 w-2.5 rotate-45 border-r border-b border-pink-300 bg-white" />
               </div>
             )}
 
@@ -351,11 +408,11 @@ export const MusicDock: React.FC<MusicDockProps> = ({
             </div>
           </div>
 
-          {/* Reset / Return to Envelope */}
+          {/* Replay song from beginning */}
           <button
-            onClick={onResetToEnvelope}
-            title="Return to Envelope Opening"
-            aria-label="Return to magical envelope opening"
+            onClick={handleReplaySong}
+            title="Replay birthday song from start (0:00)"
+            aria-label="Replay Ammu's birthday song from beginning"
             className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/60 text-pink-700 hover:bg-pink-100/70 transition-colors border border-pink-200/60 shadow-xs"
           >
             <RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />

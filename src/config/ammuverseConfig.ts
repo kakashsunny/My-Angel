@@ -43,6 +43,14 @@ export interface AmmuverseConfig {
   assets: {
     photoUrl: string;
     birthdaySongUrl: string;
+    introVideoUrl: string;
+  };
+  cinematicIntro: {
+    badge: string;
+    headline: string;
+    subtitle: string;
+    enterButtonText: string;
+    skipButtonText: string;
   };
   envelopeIntro: {
     badge: string;
@@ -169,9 +177,20 @@ export const AMMUVERSE_CONFIG: AmmuverseConfig = {
     photoUrl: "/assets/aistudio/Dreamy_Pink_Princess_Selfie_Frame_08c51e88.png",
     // Verified authentic MP3 (duration 107 seconds, size 2,351,864 bytes)
     birthdaySongUrl: "/assets/aistudio/Happy_Birthday__Princess_18c926f6.mp3",
+    // Verified authentic 5-second cinematic intro video
+    introVideoUrl: "/assets/ammuverse-intro.mp4",
   },
 
-  // 4. ENVELOPE INTRO
+  // 4. CINEMATIC INTRO (Full-screen opening scene with 5-second video)
+  cinematicIntro: {
+    badge: "ONE VERY SPECIAL UNIVERSE",
+    headline: "Reserved for Princess Ammu",
+    subtitle: "A universe created to celebrate someone truly wonderful.",
+    enterButtonText: "ENTER YOUR LITTLE UNIVERSE ♡",
+    skipButtonText: "Skip Intro →",
+  },
+
+  // 5. ENVELOPE INTRO
   envelopeIntro: {
     badge: "ONE VERY SPECIAL UNIVERSE",
     envelopeTitle: "Reserved for Ammu ♡",

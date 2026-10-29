@@ -21,9 +21,10 @@ import { SecretConstellationModal } from "./components/SecretConstellationModal"
 import { BirthdayFinaleOverlay } from "./components/BirthdayFinaleOverlay";
 import { FloatingParticlesCanvas } from "./components/FloatingParticlesCanvas";
 import { CustomMagicCursor } from "./components/CustomMagicCursor";
+import { CinematicIntro } from "./components/CinematicIntro";
 
 export default function App() {
-  const [appState, setAppState] = useState<"envelope" | "pathChoice" | "universe">("envelope");
+  const [appState, setAppState] = useState<"cinematicIntro" | "envelope" | "pathChoice" | "universe">("cinematicIntro");
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [showFinale, setShowFinale] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -87,10 +88,14 @@ export default function App() {
     }
   }, []);
 
-  // When envelope opens -> Transition to Upgrade 1: Magic Path Choice (No audio autoplay)
+  // When envelope opens -> Transition to Upgrade 1: Magic Path Choice and start Ammu's birthday song
   const handleEnvelopeOpened = () => {
     setAppState("pathChoice");
-    setAutoPlayAudio(false);
+    setAutoPlayAudio(true);
+  };
+
+  const handleStartMusic = () => {
+    setAutoPlayAudio(true);
   };
 
   // When a magic path is chosen
@@ -121,8 +126,17 @@ export default function App() {
     setAppState("envelope");
   };
 
+  const handleCinematicComplete = () => {
+    try {
+      sessionStorage.setItem("ammuverse_intro_seen", "true");
+    } catch {
+      // safe fallback
+    }
+    setAppState("envelope");
+  };
+
   // Emotional Pacing Mood:
-  // - "curiosity" at envelope opening
+  // - "curiosity" at cinematic intro / envelope opening
   // - "warmth" when reading personal letters/notes (decorative motion reduced)
   // - "joy" during the grand finale celebration
   // - "calm" during general universe exploration
@@ -130,7 +144,7 @@ export default function App() {
     ? "joy"
     : activeModal === "letter" || activeModal === "notes"
     ? "warmth"
-    : appState === "envelope"
+    : appState === "envelope" || appState === "cinematicIntro"
     ? "curiosity"
     : "calm";
 
@@ -164,10 +178,19 @@ export default function App() {
       {/* 4. Main Viewport Container (Zero Scrolling Guaranteed) */}
       <div className="relative z-10 flex h-full w-full flex-col justify-between overflow-hidden">
         <div className="flex-1 w-full overflow-hidden flex flex-col">
-          {appState === "envelope" ? (
+          {appState === "cinematicIntro" ? (
+            <CinematicIntro
+              onComplete={handleCinematicComplete}
+              onStartMusic={handleStartMusic}
+              isMuted={isMuted}
+              reducedMotion={reducedMotion}
+            />
+          ) : appState === "envelope" ? (
             <EnvelopeIntro
               onOpenUniverse={handleEnvelopeOpened}
               isMuted={isMuted}
+              onStartAudio={handleStartMusic}
+              onReplayIntro={() => setAppState("cinematicIntro")}
             />
           ) : (
             <AmmuUniverse
@@ -175,6 +198,7 @@ export default function App() {
               isMuted={isMuted}
               onToggleMute={() => setIsMuted((m) => !m)}
               onOpenFinale={() => setShowFinale(true)}
+              onResetToEnvelope={handleResetToEnvelope}
               collectedKeepsakes={collectedKeepsakes}
               isChorusActive={isChorusActive}
             />
@@ -182,7 +206,11 @@ export default function App() {
         </div>
 
         {/* Bottom Audio Dock: Permanently mounted so music is unstoppable and never interrupted */}
-        <div className="w-full flex justify-center">
+        <div
+          className={`w-full flex justify-center transition-opacity duration-700 ${
+            appState === "cinematicIntro" ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+        >
           <MusicDock
             songUrl={AMMUVERSE_CONFIG.assets.birthdaySongUrl}
             isMuted={isMuted}
